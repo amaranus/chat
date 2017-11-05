@@ -1,0 +1,186 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <style type="text/css">
+    /* Sticky footer styles */
+
+    html {
+        position: relative;
+        min-height: 100%;
+    }
+
+    body {
+        /* Margin bottom by footer height */
+        margin-bottom: 60px;
+    }
+
+    .footer {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        /* Set the fixed height of the footer here */
+        height: 60px;
+        line-height: 60px;
+        /* Vertically center the text there */
+        background-color: #f5f5f5;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h4></h4>
+        <p>Mesajınızı göndermek için Enter'a basın ya da Gönder'i tıklatın.
+            <br>(Mesajlar kayıt altına alınır.)</p><br>
+        <ul class="list-group" id="messages" style="height: 270px; overflow-y: scroll"></ul>
+        <div id="typing">&nbsp;</div>
+        <form>
+            <div class="form-group">
+                <div class="input-group">
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" data-toggle="modal" data-target="#myModal"><span class="glyphicon glyphicon-user" aria-hidden="true"></span></button>
+                    </span>
+                    <input type="text" class="form-control" id="m" name="m" autocomplete="off" autofocus required>
+                    <span class="input-group-btn">
+                    <button class="btn btn-default"> 
+                    <span class="glyphicon glyphicon-send" aria-hidden="true">                        
+                    </span>
+                    </button>
+                    </span>
+                </div>
+                <br>
+                <div id="uConnect" class="alert alert-success"></div>
+                <div id="uDisconnect" class="alert alert-danger"></div>
+            </div>
+        </form>
+        <div class="modal fade" id="myModal" role="dialog">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h5 class="modal-title">Online kullanıcılar</h4>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="list-group" id="users" style="height: 150px; overflow-y: scroll"></ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Tamam</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="footer">
+        <div class="container">
+            <span class="text-muted">© ekberiyye - 2017</span>
+        </div>
+    </footer>
+    <script>
+    $(document).ready(function() {
+        $('#uConnect').hide();
+        $('#uDisconnect').hide();
+        var timeout;
+        var socket = io();
+        var person = prompt("Takma ad");
+        if ((person == '') || (person == null)) {
+            person = "Misafir";
+        } else {
+            person = person;
+        }
+
+        // Sohbet odası başlıkları yaz
+        $('title').text(document.title = person + " oturumu başladı");
+        $("h4").text(person + " oturumu başladı");
+
+        // Kullanıcı adını servera gönder
+        socket.emit('user', person);
+
+        // Dosyadan oku
+        /* $.ajax({
+        url: 'mesajKayit.txt',
+        dataType: 'text',
+        success: function (data) {
+        $('#messages').html(data + '<br>');
+        }
+        });*/
+
+        // Sohbete giriş yapıldığında tüm eski mesajları göster, dosya okuma serverda yaplır.
+        $.get('mesajKayit.txt', function(data) {
+            //Dosyayı satır satır oku
+            var rows = data.split('\n');
+            rows = rows.slice(0, -1) // Mesaj kayıt dosyasındaki son boş satırı budama yapar
+            $.each(rows, function(n, rec) {
+                $('#messages').append($('<li class="list-group-item">').html(rec));
+            });
+        });
+
+        // Kullanıcı bağlandı mesajını göster
+        socket.on('connected', function(msg) {
+            $('#uConnect').show().delay('3000').fadeOut('slow');
+            $('#uConnect').text(msg + ' bağlandı.');
+        });
+
+        //Kullanıcı ayrıldı mesajını göster
+        socket.on('disconnected', function(msg) {
+            $('#uDisconnect').show().delay('3000').fadeOut('slow');
+            $('#uDisconnect').text(msg + ' ayrıldı.');
+        });
+
+        // Gönder butonuna basınca servera gönder
+        $('form').submit(function() {
+            socket.emit('chat message', "<font color='green'><strong>" + person + " der ki:</strong></font> " + $('#m').val());
+            $('#m').val('');
+            return false;
+        });
+
+        // Serverdan gelen mesajı mesaj alanına iliştir        
+        socket.on('chat message', function(msg) {
+            $('#messages').append($('<li class="list-group-item">').html(msg));
+            $('#messages').scrollTop($('#messages')[0].scrollHeight); // mesajlar ul' sini hep sona kaydır
+            $('#m').focus(); //mesaj yaza odaklan
+        });
+
+        // Online kullanıcıları serverdan al ekrana yaz
+        socket.on('get users', function(data) {
+            var html = '';
+            for (var i = 0; i < data.length; i++) {
+                html += '<li class="list-group-item">' + data[i] + '</li>';
+            }
+            $('#users').html(html);
+
+        });
+
+        // Kullanıcı yazıyor fonksiyon başlangıcı
+        $('#m').keyup(function() {
+            //console.log('happening');
+            typing = true;
+            socket.emit('typing', "<font color='green'>" + person + " " + 'yazıyor...' + "</font>");
+            clearTimeout(timeout);
+            timeout = setTimeout(timeoutFunction, 2000);
+        });
+        socket.on('typing', function(data) {
+            if (data) {
+                $('#typing').html(data);
+            } else {
+                $('#typing').html("&nbsp;");
+            }
+        });
+
+        function timeoutFunction() {
+            typing = false;
+            socket.emit("typing", false);
+        }
+        // Kullanıcı yazıyor fonksiyon bitişi
+    });
+    </script>
+</body>
+
+</html>

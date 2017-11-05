@@ -1,0 +1,2 @@
+<font color='green'><strong>Selami der ki:</strong></font> selam
+<font color='green'><strong>Mustafa der ki:</strong></font> Selamun Aleykum
