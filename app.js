@@ -67,6 +67,6 @@ io.on('connection', function (socket) {
 
 // Server dinleme portunu başlat
 //http.listen(process.env.PORT, '0.0.0.0');
-app.listen(port, function () {
+http.listen(port, function () {
     console.log('Sunucu başladı.')
 });
